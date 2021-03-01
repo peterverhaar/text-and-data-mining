@@ -9,13 +9,21 @@ import string
 def word_tokenise( text ):
     tokens = []
     text = text.lower()
-    text = re.sub( '--' , ' -- ' , text)
+    text = re.sub( r'--' , ' -- ' , text)
+    text = re.sub( r'-\"' , ' -- ' , text)
+    text = re.sub( r'-\'' , ' -- ' , text)
     words = re.split( r'\s+' , text )
     for w in words:
         w = w.strip( string.punctuation )
         if re.search( r"[a-zA-Z]" , w ):
             tokens.append(w)
     return tokens
+
+def flesch_kincaid( asl , asw ):
+    fk = 0.39 * ( asl )
+    fk = fk + 11.8 * ( asw )
+    fk = fk - 15.59
+    return fk
 
 def sortedByValue( dict ):
     return sorted( dict , key=lambda x: dict[x])
@@ -50,7 +58,23 @@ def removeExtension(text):
     new_text = re.sub( '\.txt' , '' , text )
     return new_text
 
+def removeStopWords( freq ):
 
+    from nltk.corpus import stopwords
+    stopwords_list = stopwords.words('english')
+
+    filtered = dict()
+
+    for w in freq:
+            if w not in stopwords_list:
+                filtered[w] = freq[w]
+
+    return filtered
+
+def countSyllables( word ):
+    pattern = "e?[aiou]+e*|e(?!d$|ly).|[td]ed|le$|ble$|a$"
+    syllables = re.findall( pattern , word )
+    return len(syllables)
 
 class text:
 
@@ -114,10 +138,11 @@ class text:
 
         return concordance
 
-    def concordance_char( self , searchTerm , window ):
+    def concordance_char( self , search_term,window ):
 
         concordance = []
-        regex = r'\b{}\b'.format( searchTerm )
+
+        regex = r'\b{}\b'.format( search_term )
 
         for line in self.segments:
             line = line.strip()
@@ -125,8 +150,8 @@ class text:
             if re.search( regex , line , re.IGNORECASE ):
                 extract = ''
                 position = re.search( regex , line , re.IGNORECASE ).start()
-                start = position - len( searchTerm ) - window ;
-                fragmentLength = start + 2 * window  + len( searchTerm )
+                start = position - len( search_term ) - window ;
+                fragmentLength = start + 2 * window  + 2 * len( search_term )
                 if fragmentLength > len( line ):
                     fragmentLength = len( line )
 
@@ -143,32 +168,39 @@ class text:
 
                 if re.search( '\w' , extract ) and re.search( regex , extract , re.IGNORECASE ):
                     concordance.append( extract )
-                    print(extract)
+
         return concordance
 
-    def divideIntoSegments( self , numberOfSegments ):
 
-        segments = []
+    def collocation( self , searchTerm , distance ):
 
-        fullText = ' '.join(self.segments)
-        allWords = re.split( r'\s+' , fullText )
+        regex = r"\b" + searchTerm.lower() + r"\b"
+        freq = dict()
 
-        segmentSize = int( len(allWords) / numberOfSegments )
+        paragraph = ''
+        parLength = 0
 
-        countWords = 0
-        text = ''
+        for line in self.segments:
+            line = line.strip()
+            if parLength < 100:
+                parLength += len(line)
+                paragraph += line + ' '
+            else:
+                parLength = 0
+                words = word_tokenise( paragraph )
+                i = 0
+                for w in words:
+                    if re.search( regex , w , re.IGNORECASE ):
 
-        for word in allWords:
-            countWords += 1
-            text += word + ' '
+                        for x in range( i - distance , i + distance ):
+                            if x >= 0 and x < len(words) and searchTerm != words[x]:
+                                if len(words[x]) > 0:
+                                    freq[ words[x] ] = freq.get( words[x] , 0 ) + 1
 
-            ## This line below used the modulo operator:
-            ## We can use it to test if the first number is
-            ## divisible by the second number
-            if countWords % segmentSize == 0:
-                segments.append(text.strip())
-                text = ''
-        return segments
+                    i += 1
+                paragraph = ''
+        return freq
+
 
 
     def calculate_word_frequencies( self ):
