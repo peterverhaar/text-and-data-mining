@@ -99,18 +99,19 @@ def ptb_to_wordnet(PTT):
 class text:
 
     full_text = ''
-    segments = []
     file_name = ''
     tokens = 0
     types = 0
 
     def __init__(self, file_name ):
         self.file_name = file_name
+        self.segments = []
 
         tokens_count = 0
         if re.search( r'\.txt$' , self.file_name ):
             try:
                 freq = dict()
+                freq.clear()
                 text = open( self.file_name , encoding = 'utf-8' , errors = 'ignore' )
                 for s in text:
                     self.segments.append(s)
@@ -120,6 +121,7 @@ class text:
                         freq[w] = freq.get(w,0) + 1
             except:
                 print( "Cannot read " + self.file_name + " !" )
+
             self.types = len(freq)
             self.tokens = tokens_count
 
@@ -195,10 +197,13 @@ class text:
     def collocation( self , searchTerm , distance ):
 
         regex = r"\b" + searchTerm.lower() + r"\b"
-        freq = dict()
+        freq_c = dict()
+
+        words = []
 
         paragraph = ''
         parLength = 0
+
 
         for line in self.segments:
             line = line.strip()
@@ -215,11 +220,12 @@ class text:
                         for x in range( i - distance , i + distance ):
                             if x >= 0 and x < len(words) and searchTerm != words[x]:
                                 if len(words[x]) > 0:
-                                    freq[ words[x] ] = freq.get( words[x] , 0 ) + 1
+                                    freq_c[ words[x] ] = freq_c.get( words[x] , 0 ) + 1
+
 
                     i += 1
                 paragraph = ''
-        return freq
+        return freq_c
 
 
 
