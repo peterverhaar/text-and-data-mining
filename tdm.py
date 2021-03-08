@@ -5,6 +5,9 @@ import os
 from os.path import isfile, join , isdir
 import string
 
+import nltk
+from nltk.stem import WordNetLemmatizer
+
 
 def word_tokenise( text ):
     tokens = []
@@ -72,9 +75,26 @@ def removeStopWords( freq ):
     return filtered
 
 def countSyllables( word ):
-    pattern = "e?[aiou]+e*|e(?!d$|ly).|[td]ed|le$|ble$|a$"
+    pattern = "e?[aiou]+e*|e(?!d$|ly).|[td]ed|le$|ble$|a$|y$"
     syllables = re.findall( pattern , word )
     return len(syllables)
+
+def ptb_to_wordnet(PTT):
+
+    if PTT.startswith('J'):
+        ## Adjective
+        return 'a'
+    elif PTT.startswith('V'):
+        ## Verb
+        return 'v'
+    elif PTT.startswith('N'):
+        ## Noune
+        return 'n'
+    elif PTT.startswith('R'):
+        ## Adverb
+        return 'r'
+    else:
+        return ''
 
 class text:
 
@@ -210,3 +230,22 @@ class text:
             for w in words:
                 freq[w] = freq.get( w , 0) + 1
         return freq
+
+
+
+    def lemmatise( self ):
+        lemmatised_text = ''
+        lemmatiser = WordNetLemmatizer()
+        for line in self.segments:
+            words = word_tokenise(line)
+            pos = nltk.pos_tag(words)
+
+            for i in range( 0 , len(words) ):
+                posTag = ptb_to_wordnet( pos[i][1] )
+                if re.search( r'\w+' , posTag , re.IGNORECASE ):
+                    lemma = lemmatiser.lemmatize( words[i] , posTag )
+                else:
+                    lemma = lemmatiser.lemmatize( words[i] )
+                lemmatised_text += lemma + ' '
+            lemmatised_text += '\n'
+        return lemmatised_text
